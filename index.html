@@ -60,9 +60,9 @@
     // ポリゴン追加
     function addFeatures() {
         features.forEach(function eachFilter(feature, index) {
-      console.log(map.getStyle().layers);
           var sourceId = 'feature-' + feature;
           var layerId = sourceId + '-line';
+          // TODO
           if (map.getLayer(layerId)) {
             map.removeLayer(layerId); 
             if (map.getSource(sourceId)) map.removeSource(sourceId);
