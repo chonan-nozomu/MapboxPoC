@@ -9,66 +9,100 @@
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.0.0/mapbox-gl.css" rel="stylesheet" />
   <link href="./css/index.css" rel="stylesheet" />
 </head>
+
 <body>
   <div id="map"></div>
-  <div id="menu">
-    <a href="#" id="canvas" class="active" onclick="downloadCanvas();">canvas出力(96dpi)</a>
+  <div id="menu1">
+    <input id="gsi-vector" type="radio" name="rtoggle" value="vector" checked="checked" />
+    <label for="gsi-vector">ベクタ(地理院標準)</label>
+    <input id="gsi-raster" type="radio" name="rtoggle" value="raster" />
+    <label for="gsi-raster">ラスタ(地理院淡色)</label>
+  </div>
+  <div id="menu2">
+    <a href="#" id="canvas1" class="active" onclick="downloadCanvas();">canvas出力(96dpi)</a>
     <a href="#" id="api" class="active" onclick="downloadStaticImage();">Static Image API</a>
   </div>
   <canvas id="canvas"></canvas>
   <a id="hiddenLink" style="display:none;">link</a>
-<!-- directions -->
-<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.js"></script>
-<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.css" type="text/css"/>
-<!-- geocoder (search)
+  <!-- directions -->
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.js"></script>
+  <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.css" type="text/css" />
+  <!-- geocoder (search)
 <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.5.1/mapbox-gl-geocoder.min.js"></script>
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.5.1/mapbox-gl-geocoder.css" type="text/css"/>
 -->
-<!-- Promise polyfill script required to use Mapbox GL Geocoder in IE 11 
+  <!-- Promise polyfill script required to use Mapbox GL Geocoder in IE 11 
 <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
 -->
-<!-- jsPDF
+  <!-- jsPDF
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.2.0/jspdf.umd.min.js"></script>
  -->
-<!-- html2canvas 
+  <!-- html2canvas 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.0.0-rc.5/dist/html2canvas.min.js"></script>
 -->
-<script>
-  mapboxgl.accessToken = 'pk.eyJ1IjoiY2hvbmFuLW5vem9tdSIsImEiOiJja2k1bHJjbDg0ZXZ2MnFrem81NWlmaG90In0.v__tuK8SHq9Q2IGKM9ZFwQ';
-  var map = new mapboxgl.Map({
-    container: "map",
-    hash: true,
-//      style: "https://gsi-cyberjapan.github.io/gsivectortile-mapbox-gl-js/std.json",
-//      style: "./data/gray1moji.json",
-    style: "./data/style.json",
-    zoom: 13,
-    center: [139.753299, 35.685384]
-  });
-  map.addControl(new mapboxgl.ScaleControl(), "bottom-left");
-//  map.addControl(new MapboxGeocoder({accessToken: mapboxgl.accessToken,language: 'ja-JP',mapboxgl: mapboxgl}));
-  map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-  map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken}),'top-left');
+  <script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoiY2hvbmFuLW5vem9tdSIsImEiOiJja2k1bHJjbDg0ZXZ2MnFrem81NWlmaG90In0.v__tuK8SHq9Q2IGKM9ZFwQ';
+    var map = new mapboxgl.Map({
+      container: "map",
+      hash: true,
+      style: "./style/gsi-vector.json",
+      zoom: 14,
+      center: [139.618030, 35.734292]
+    });
+    map.addControl(new mapboxgl.ScaleControl(), "bottom-left");
+    //  map.addControl(new MapboxGeocoder({accessToken: mapboxgl.accessToken,language: 'ja-JP',mapboxgl: mapboxgl}));
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+//    map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken}), 'top-left');
+    var features = ['13421','13100','13201','13202','13203','13204','13205','13206','13207','13208','13209','13210','13211','13212','13213','13214','13215','13218','13219','13220','13221','13222','13223','13224','13225','13227','13228','13229','13303','13305','13307','13308','13361','13362','13363','13364','13381','13382','13401','13402'];
+    map.on('load', addFeatures);
 
-  
-  // 画像ダウンロード
-  function downloadCanvas() {
-    let canvas = document.getElementById("canvas");
-    let link = document.getElementById("hiddenLink");
-    link.href = map.getCanvas().toDataURL("image/png");
-    link.download="canvas.png"
-    link.click();
-  }
+    // ポリゴン追加
+    function addFeatures() {
+        features.forEach(function eachFilter(feature, index) {
+      console.log(map.getStyle().layers);
+          var sourceId = 'feature-' + feature;
+          var layerId = sourceId + '-line';
+          if (map.getLayer(layerId)) {
+            map.removeLayer(layerId); 
+            if (map.getSource(sourceId)) map.removeSource(sourceId);
+          }
+          map.addSource(sourceId, {type: 'geojson', data: 'https://chonan-nozomu.github.io/MapboxPoC/geojson/' + feature + '.geojson'});
+          map.addLayer({id: layerId,type: 'line',source: sourceId,layout: {}});
+        });
+    }
 
-  // 静的HTMLダウンロード
-  function downloadStaticImage() {
-    let link = document.getElementById("hiddenLink");
-    link.href="https://api.mapbox.com/styles/v1/chonan-nozomu/ckj0qqpqe0uie1arqbobct40r/static/pin-l-z+0000ff(139.75175,35.68551)/139.75175,35.68551,10,0/500x400@2x?access_token=" + mapboxgl.accessToken;
-    link.download="image.png";
-    link.target="_blank";
-    link.click();
-    link.target="";
-  }
-</script>
+    // 画像ダウンロード
+    function downloadCanvas() {
+      let canvas = document.getElementById("canvas");
+      let link = document.getElementById("hiddenLink");
+      link.href = map.getCanvas().toDataURL("image/png");
+      link.download = "canvas.png"
+      link.click();
+    }
+    // 静的HTMLダウンロード
+    function downloadStaticImage() {
+      let link = document.getElementById("hiddenLink");
+      link.href = "https://api.mapbox.com/styles/v1/chonan-nozomu/ckj0qqpqe0uie1arqbobct40r/static/pin-l-z+0000ff(139.75175,35.68551)/139.75175,35.68551,10,0/500x400@2x?access_token=" + mapboxgl.accessToken;
+      link.download = "image.png";
+      link.target = "_blank";
+      link.click();
+      link.target = "";
+    }
+
+    var layerList = document.getElementById('menu1');
+    var inputs = layerList.getElementsByTagName('input');
+ 
+    function switchLayer(layer) {
+      var layerId = layer.target.id;
+      map.setStyle("./data/" + layerId + ".json");
+      addFeatures();
+    }
+ 
+    for (var i = 0; i < inputs.length; i++) {
+      inputs[i].onclick = switchLayer;
+    }
+  </script>
 </body>
+
 </html>
