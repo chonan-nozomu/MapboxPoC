@@ -61,7 +61,7 @@
     d3.json("https://chonan-nozomu.github.io/MapboxPoC/topojson/13000.topojson").then(createFeature);
     function createFeature(topo) {
       // TopoJSONをGeoJSONに変換する
-      var geojson = topojson.feature(topo, topo.objects['tokyo']);
+      var geojson = topojson.feature(topo, topo.objects['13000']);
       // svg要素をアペンドする
       var container = map.getCanvasContainer();
       var svg = d3.select(container).append("svg");
