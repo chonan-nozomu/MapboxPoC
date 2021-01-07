@@ -100,6 +100,7 @@
         renderFeature();
         svg.style("visibility", "visible");
       });
+      /*
       //ズームイベント設定 TODO
       var zoomed = d3.zoom().on('zoom', function(event, d){
         projection.scale(1000 * event.transform.k);
@@ -113,6 +114,7 @@
         featureElement.attr('d', path);
       });
       svg.call(dragged);
+      */
 
       var inputs = document.getElementById('menu1').getElementsByTagName('input');
       function switchLayer(layer) {
