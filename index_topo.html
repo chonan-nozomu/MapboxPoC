@@ -58,7 +58,7 @@
 //    map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken}), 'top-left');
 
     // ポリゴン追加（topojson＋d3.js版）
-    d3.json("https://chonan-nozomu.github.io/MapboxPoC/topojson/13100.topojson").then(createFeature);
+    d3.json("https://chonan-nozomu.github.io/MapboxPoC/topojson/13000.topojson").then(createFeature);
     function createFeature(topo) {
       // TopoJSONをGeoJSONに変換する
       var geojson = topojson.feature(topo, topo.objects['tokyo']);
