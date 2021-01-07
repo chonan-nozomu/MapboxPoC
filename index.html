@@ -56,7 +56,6 @@
     //  map.addControl(new MapboxGeocoder({accessToken: mapboxgl.accessToken,language: 'ja-JP',mapboxgl: mapboxgl}));
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 //    map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken}), 'top-left');
-    var features = ['13100','13201','13202','13203','13204','13205','13206','13207','13208','13209','13210','13211','13212','13213','13214','13215','13218','13219','13220','13221','13222','13223','13224','13225','13227','13228','13229','13303','13305','13307','13308','13361','13362','13363','13364','13381','13382','13401','13402','13421'];
 
     // ポリゴン追加（topojson＋d3.js版）
     /*
@@ -135,11 +134,10 @@
     // setStyle呼出時にtrigger
     map.on('style.load', renderFeature);
     function renderFeature() {
-      features.forEach(function eachFilter(feature, index) {
-        var sourceId = 'feature-' + feature, layerId = sourceId + '-line';
-        map.addSource(sourceId, {type: 'geojson', data: 'https://chonan-nozomu.github.io/MapboxPoC/geojson/' + feature + '.geojson'});
-        map.addLayer({id: layerId,type: 'line',source: sourceId,layout: {}});
-      });
+      var sourceId = 'feature-13000', layerId = sourceId + '-line';
+      map.addSource(sourceId, {type: 'geojson', data: 'https://chonan-nozomu.github.io/MapboxPoC/geojson/13000.geojson'});
+      map.addLayer({id: layerId,type: 'line',source: sourceId,layout: {}});
+      map.on('click', layerId, setPopup);
     }
     var inputs = document.getElementById('menu1').getElementsByTagName('input');
     function switchLayer(layer) {
@@ -148,6 +146,12 @@
     }
     for (var i = 0; i < inputs.length; i++) {
       inputs[i].onclick = switchLayer;
+    }
+    function setPopup(e) {
+      new mapboxgl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(e.features[0].properties['耕地の種類']+e.features[0].properties['2019ID'])
+        .addTo(map);
     }
 
     // 画像ダウンロード
