@@ -6,6 +6,9 @@
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.0.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.0.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.3.1/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
   <link href="./css/index.css" rel="stylesheet" />
 </head>
 
@@ -45,42 +48,79 @@
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
     map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken}), 'top-left');
 
+    // ポリゴン追加（topojson＋d3.js版）
+    d3.json("https://chonan-nozomu.github.io/MapboxPoC/topojson/13000.topojson").then(createFeature);
+    function createFeature(topo) {
+      // TopoJSONをGeoJSONに変換する
+      var geojson = topojson.feature(topo, topo.objects['13000']);
+      // svg要素をアペンドする
+      var container = map.getCanvasContainer();
+      var svg = d3.select(container).append("svg");
 
-    // ポリゴン追加（geojson版）
-    map.on('load', renderFeature);
-    // setStyle呼出時にtrigger
-    map.on('style.load', renderFeature);
-    function renderFeature() {
-      var sourceId = 'feature-13000', layerId = sourceId + '-line';
-      map.addSource(sourceId, {type: 'geojson', data: 'https://chonan-nozomu.github.io/MapboxPoC/geojson/13000.geojson'});
-      map.addLayer({id: layerId,type: 'line',source: sourceId,paint:{'line-color':'#bb641d','line-width':1.5}});
-      map.on('click', layerId, setPopup);
-      // Change the cursor to a pointer when the mouse is over the places layer.
-      map.on('mouseenter', layerId, function() {
-        map.getCanvas().style.cursor = 'pointer';
+      // TODO translateとscale
+      var mapboxProjection = d3.geoTransform({point: function(lng, lat) {
+        var point = map.project(new mapboxgl.LngLat(lng, lat));
+		    this.stream.point(point.x, point.y);
+      }});
+      var path = d3.geoPath().projection(mapboxProjection);
+      var center = map.getCenter();
+      var zoom = map.getZoom();
+      // 512 is hardcoded tile size, might need to be 256 or changed to suit your map config
+      var scale = (512) * 0.5 / Math.PI * Math.pow(2, zoom);
+      var projection = d3
+        .geoMercator() //投影法の指定
+        .scale(scale)	//スケール（ズーム）の指定
+        .center([center.lng, center.lat]); //中心の座標を指定
+      // var path = d3.geoPath().projection(projection);
+      var featureElement = svg.append("g").selectAll("path")
+        .data(geojson.features)
+        .enter()
+          .append("path")
+          .attr("stroke", "#BB641D")
+          .attr("stroke-width", "1.5")
+          .attr("fill", "none");
+      function renderFeature() {
+        featureElement.attr("d", path);  //dataに投影法を適応
+      }
+      map.on("viewreset", renderFeature);
+      map.on("movestart", function() {
+        svg.style("visibility", "hidden");
+      });	
+      map.on("rotate", function() {
+        svg.style("visibility", "visible");
+      });	
+      map.on("moveend", function() {
+        renderFeature();
+        svg.style("visibility", "visible");
       });
-      // Change it back to a pointer when it leaves.
-      map.on('mouseleave', layerId, function() {
-        map.getCanvas().style.cursor = '';
+      var inputs = document.getElementById('menu1').getElementsByTagName('input');
+      function switchLayer(layer) {
+        var layerId = layer.target.id;
+        map.setStyle("./style/" + layerId + ".json");
+        renderFeature();
+      }
+      for (var i = 0; i < inputs.length; i++) {
+        inputs[i].onclick = switchLayer;
+      }
+      renderFeature();
+      /*
+      //ズームイベント設定 TODO
+      var zoomed = d3.zoom().scaleExtent([1 / 2, 12]).on('zoom', function(event, d){
+        featureElement.attr('transform', event.transform);
       });
-    }
-    var inputs = document.getElementById('menu1').getElementsByTagName('input');
-    for (var i = 0; i < inputs.length; i++) {
-      inputs[i].onclick = switchLayer;
+      svg.call(zoomed);
+      //ドラッグイベント設定 TODO
+      var dragged = d3.drag().on('drag', function(event, d){
+        var tl = projection.translate();
+        projection.translate([tl[0] + event.dx, tl[1] + event.dy]);
+        featureElement.attr('d', path);
+      });
+      svg.call(dragged);
+      */
     }
     var elms = document.getElementsByClassName("mapboxgl-ctrl-top-left");
     for (var i = 0;i< elms.length; i++) {
       elms[i].style.top="40px";
-    }
-    function switchLayer(layer) {
-      var layerId = layer.target.id;
-      map.setStyle("./style/" + layerId + ".json");
-    }
-    function setPopup(e) {
-      new mapboxgl.Popup()
-        .setLngLat(e.lngLat)
-        .setHTML(e.features[0].properties['耕地の種類']+e.features[0].properties['2019ID'])
-        .addTo(map);
     }
 
     // 画像ダウンロード

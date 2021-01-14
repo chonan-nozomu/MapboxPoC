@@ -5,8 +5,8 @@
   <title>Show and hide layers</title>
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.0.0/mapbox-gl.js"></script>
-  <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.0.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.3.1/d3.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
   <link href="./css/index.css" rel="stylesheet" />
@@ -15,9 +15,9 @@
 <body>
   <div id="map"></div>
   <div id="menu1">
-    <input id="gsi-vector" type="radio" name="rtoggle" value="vector" checked="checked" />
+    <input id="gsi-vector" type="radio" name="rtoggle" value="vector"/>
     <label for="gsi-vector">ベクタ(地理院標準)</label>
-    <input id="gsi-raster" type="radio" name="rtoggle" value="raster" />
+    <input id="gsi-raster" type="radio" name="rtoggle" value="raster" checked="checked" />
     <label for="gsi-raster">ラスタ(地理院淡色)</label>
   </div>
   <div id="menu2">
@@ -29,14 +29,6 @@
   <!-- directions -->
   <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.js"></script>
   <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.css" type="text/css" />
-  <!-- geocoder (search)
-<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.5.1/mapbox-gl-geocoder.min.js"></script>
-<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.5.1/mapbox-gl-geocoder.css" type="text/css"/>
--->
-  <!-- Promise polyfill script required to use Mapbox GL Geocoder in IE 11 
-<script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
--->
   <!-- jsPDF
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.2.0/jspdf.umd.min.js"></script>
  -->
@@ -53,9 +45,8 @@
       center: [139.618030, 35.734292]
     });
     map.addControl(new mapboxgl.ScaleControl(), "bottom-left");
-    //  map.addControl(new MapboxGeocoder({accessToken: mapboxgl.accessToken,language: 'ja-JP',mapboxgl: mapboxgl}));
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-//    map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken}), 'top-left');
+    map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken}), 'top-left');
 
     // ポリゴン追加（topojson＋d3.js版）
     d3.json("https://chonan-nozomu.github.io/MapboxPoC/topojson/13000.topojson").then(createFeature);
@@ -126,6 +117,10 @@
       });
       svg.call(dragged);
       */
+    }
+    var elms = document.getElementsByClassName("mapboxgl-ctrl-top-left");
+    for (var i = 0;i< elms.length; i++) {
+      elms[i].style.top="40px";
     }
 
     // 画像ダウンロード
