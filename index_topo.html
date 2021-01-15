@@ -57,75 +57,46 @@
     map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken}), 'top-left');
 
     // ポリゴン追加（topojson＋d3.js版）
-    d3.json("https://chonan-nozomu.github.io/MapboxPoC/topojson/" + area + ".topojson").then(createFeature);
-    function createFeature(topo) {
+    const topojsonUrl = "https://chonan-nozomu.github.io/MapboxPoC/topojson/" + area + ".topojson";
+    // svg要素をアペンドする
+    let container = map.getCanvasContainer();
+    let svg = d3.select(container).append("svg");
+    const project = d3.geoTransform({point: function(lng, lat) {
+      var point = map.project(new mapboxgl.LngLat(lng, lat));
+      this.stream.point(point.x, point.y);
+    }});
+    d3.json(topojsonUrl).then(function(topo) {
       // TopoJSONをGeoJSONに変換する
-      var geojson = topojson.feature(topo, topo.objects['tokyo']);
-      // svg要素をアペンドする
-      var container = map.getCanvasContainer();
-      var svg = d3.select(container).append("svg");
-
-      // TODO translateとscale
-      var mapboxProjection = d3.geoTransform({point: function(lng, lat) {
-        var point = map.project(new mapboxgl.LngLat(lng, lat));
-		    this.stream.point(point.x, point.y);
-      }});
-      var path = d3.geoPath().projection(mapboxProjection);
-      var center = map.getCenter();
-      var zoom = map.getZoom();
-      // 512 is hardcoded tile size, might need to be 256 or changed to suit your map config
-      var scale = (512) * 0.5 / Math.PI * Math.pow(2, zoom);
-      var projection = d3
-        .geoMercator() //投影法の指定
-        .scale(scale)	//スケール（ズーム）の指定
-        .center([center.lng, center.lat]); //中心の座標を指定
-      // var path = d3.geoPath().projection(projection);
-      var featureElement = svg.append("g").selectAll("path")
+      const geojson = topojson.feature(topo, topo.objects['tokyo']);
+      let featureElement = svg.append("g").selectAll("path")
         .data(geojson.features)
         .enter()
           .append("path")
           .attr("stroke", "#BB641D")
           .attr("stroke-width", "1.5")
           .attr("fill", "none");
-      function renderFeature() {
+      // 描画更新
+      function update() {
+        let path = d3.geoPath().projection(project);
         featureElement.attr("d", path);  //dataに投影法を適応
       }
-      map.on("viewreset", renderFeature);
-      map.on("movestart", function() {
-        svg.style("visibility", "hidden");
-      });	
-      map.on("rotate", function() {
-        svg.style("visibility", "visible");
-      });	
-      map.on("moveend", function() {
-        renderFeature();
-        svg.style("visibility", "visible");
-      });
-      var inputs = document.getElementById('menu1').getElementsByTagName('input');
+      // マップイベントにアップデート関数をバインド
+      map.on("viewreset", update);
+      map.on("move", update);
+
+      // ベクタ・ラスタ切替イベントにアップデート関数をバインド
+      const inputs = document.getElementById('menu1').getElementsByTagName('input');
       function switchLayer(layer) {
-        var layerId = layer.target.id;
-        map.setStyle("./style/" + layerId + ".json");
-        renderFeature();
+        map.setStyle("./style/" + layer.target.id + ".json");
+        update();
       }
       for (var i = 0; i < inputs.length; i++) {
         inputs[i].onclick = switchLayer;
       }
-      renderFeature();
-      /*
-      //ズームイベント設定 TODO
-      var zoomed = d3.zoom().scaleExtent([1 / 2, 12]).on('zoom', function(event, d){
-        featureElement.attr('transform', event.transform);
-      });
-      svg.call(zoomed);
-      //ドラッグイベント設定 TODO
-      var dragged = d3.drag().on('drag', function(event, d){
-        var tl = projection.translate();
-        projection.translate([tl[0] + event.dx, tl[1] + event.dy]);
-        featureElement.attr('d', path);
-      });
-      svg.call(dragged);
-      */
-    }
+
+      update();
+    });
+
     var elms = document.getElementsByClassName("mapboxgl-ctrl-top-left");
     for (var i = 0;i< elms.length; i++) {
       elms[i].style.top="40px";
