@@ -42,8 +42,3 @@ body { margin: 0; padding: 0; }
 #menu2 a.active:hover {
   background: #ff9b9d;
 }
-svg {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-}

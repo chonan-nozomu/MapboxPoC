@@ -15,9 +15,9 @@
 <body>
   <div id="map"></div>
   <div id="menu1">
-    <input id="gsi-vector" type="radio" name="rtoggle" value="vector"/>
+    <input id="gsi-vector" type="radio" name="rtoggle" value="vector" checked="checked" />
     <label for="gsi-vector">ベクタ(地理院標準)</label>
-    <input id="gsi-raster" type="radio" name="rtoggle" value="raster" checked="checked" />
+    <input id="gsi-raster" type="radio" name="rtoggle" value="raster" />
     <label for="gsi-raster">ラスタ(地理院淡色)</label>
   </div>
   <div id="menu2">
@@ -36,11 +36,19 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.0.0-rc.5/dist/html2canvas.min.js"></script>
 -->
   <script>
+    var param = window.location.search;
+    var format = getParam('format');    // EXPECT: 'vector' or 'raster'
+    if (!format) format = 'vector';
+    var area = getParam('area');        // EXPECT: '13000'(=Tokyo)、'13228'(=Akiruno City)
+    if (!area) area='13000';
+
+    document.getElementById('gsi-' + format).checked = true;
+
     mapboxgl.accessToken = 'pk.eyJ1IjoiY2hvbmFuLW5vem9tdSIsImEiOiJja2k1bHJjbDg0ZXZ2MnFrem81NWlmaG90In0.v__tuK8SHq9Q2IGKM9ZFwQ';
     var map = new mapboxgl.Map({
       container: "map",
       hash: true,
-      style: "./style/gsi-vector.json",
+      style: "./style/gsi-" + format + ".json",
       zoom: 14,
       center: [139.618030, 35.734292]
     });
@@ -49,10 +57,10 @@
     map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken}), 'top-left');
 
     // ポリゴン追加（topojson＋d3.js版）
-    d3.json("https://chonan-nozomu.github.io/MapboxPoC/topojson/13000.topojson").then(createFeature);
+    d3.json("https://chonan-nozomu.github.io/MapboxPoC/topojson/" + area + ".topojson").then(createFeature);
     function createFeature(topo) {
       // TopoJSONをGeoJSONに変換する
-      var geojson = topojson.feature(topo, topo.objects['13000']);
+      var geojson = topojson.feature(topo, topo.objects['tokyo']);
       // svg要素をアペンドする
       var container = map.getCanvasContainer();
       var svg = d3.select(container).append("svg");
@@ -139,6 +147,22 @@
       link.target = "_blank";
       link.click();
       link.target = "";
+    }
+
+    /**
+     * Get the URL parameter value
+     *
+     * @param  name {string} パラメータのキー文字列
+     * @return  url {url} 対象のURL文字列（任意）
+     */
+    function getParam(name, url) {
+        if (!url) url = window.location.href;
+        name = name.replace(/[\[\]]/g, "\\$&");
+        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+            results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, " "));
     }
   </script>
 </body>
