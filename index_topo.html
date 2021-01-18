@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Show and hide layers</title>
+  <title>Mapbox PoC TopoJSON</title>
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.0.1/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.0.1/mapbox-gl.css" rel="stylesheet" />
@@ -58,48 +58,45 @@
 
     // ポリゴン追加（topojson＋d3.js版）
     const topojsonUrl = "https://chonan-nozomu.github.io/MapboxPoC/topojson/" + area + ".topojson";
-    // svg要素をアペンドする
-    let container = map.getCanvasContainer();
-    let svg = d3.select(container).append("svg");
-    const project = d3.geoTransform({point: function(lng, lat) {
-      var point = map.project(new mapboxgl.LngLat(lng, lat));
-      this.stream.point(point.x, point.y);
-    }});
+    // TopoJSON読込
     d3.json(topojsonUrl).then(function(topo) {
       // TopoJSONをGeoJSONに変換する
       const geojson = topojson.feature(topo, topo.objects['tokyo']);
-      let featureElement = svg.append("g").selectAll("path")
-        .data(geojson.features)
-        .enter()
-          .append("path")
-          .attr("stroke", "#BB641D")
-          .attr("stroke-width", "1.5")
-          .attr("fill", "none");
-      // 描画更新
-      function update() {
-        let path = d3.geoPath().projection(project);
-        featureElement.attr("d", path);  //dataに投影法を適応
-      }
-      // マップイベントにアップデート関数をバインド
-      map.on("viewreset", update);
-      map.on("move", update);
 
-      // ベクタ・ラスタ切替イベントにアップデート関数をバインド
-      const inputs = document.getElementById('menu1').getElementsByTagName('input');
-      function switchLayer(layer) {
-        map.setStyle("./style/" + layer.target.id + ".json");
-        update();
+      map.on('load', renderFeature);
+      // setStyle呼出時にtrigger
+      map.on('style.load', renderFeature);
+      function renderFeature() {
+        var sourceId = 'feature-' + area, layerId = sourceId + '-line';
+        map.addSource(sourceId, {type: 'geojson', data: geojson});
+        map.addLayer({id: layerId,type: 'line',source: sourceId,paint:{'line-color':'#bb641d','line-width':1.5}});
+        map.on('click', layerId, setPopup);
+        // Change the cursor to a pointer when the mouse is over the places layer.
+        map.on('mouseenter', layerId, function() {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        // Change it back to a pointer when it leaves.
+        map.on('mouseleave', layerId, function() {
+          map.getCanvas().style.cursor = '';
+        });
       }
-      for (var i = 0; i < inputs.length; i++) {
-        inputs[i].onclick = switchLayer;
-      }
-
-      update();
     });
-
+    var inputs = document.getElementById('menu1').getElementsByTagName('input');
+    for (var i = 0; i < inputs.length; i++) {
+      inputs[i].onclick = switchLayer;
+    }
     var elms = document.getElementsByClassName("mapboxgl-ctrl-top-left");
     for (var i = 0;i< elms.length; i++) {
       elms[i].style.top="40px";
+    }
+    function switchLayer(layer) {
+      map.setStyle("./style/" + layer.target.id + ".json");
+    }
+    function setPopup(e) {
+      new mapboxgl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(e.features[0].properties['耕地の種類']+e.features[0].properties['2019ID'])
+        .addTo(map);
     }
 
     // 画像ダウンロード

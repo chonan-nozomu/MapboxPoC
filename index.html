@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Show and hide layers</title>
+  <title>Mapbox PoC GeoJSON</title>
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.0.1/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.0.1/mapbox-gl.css" rel="stylesheet" />
@@ -53,7 +53,6 @@
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
     map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken}), 'top-left');
 
-
     // ポリゴン追加（geojson版）
     map.on('load', renderFeature);
     // setStyle呼出時にtrigger
@@ -81,8 +80,7 @@
       elms[i].style.top="40px";
     }
     function switchLayer(layer) {
-      var layerId = layer.target.id;
-      map.setStyle("./style/" + layerId + ".json");
+      map.setStyle("./style/" + layer.target.id + ".json");
     }
     function setPopup(e) {
       new mapboxgl.Popup()
