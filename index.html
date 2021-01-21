@@ -6,11 +6,16 @@
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.0.1/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.0.1/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.2.0/mapbox-gl-draw.js"></script>
+  <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.2.0/mapbox-gl-draw.css" type="text/css"/>
   <link href="./css/index.css" rel="stylesheet" />
 </head>
 
 <body>
   <div id="map"></div>
+  <div class="drawed-box">
+    <div id="drawed-area"></div>
+  </div>
   <div id="menu1">
     <input id="gsi-vector" type="radio" name="rtoggle" value="vector" checked="checked" />
     <label for="gsi-vector">ベクタ(地理院標準)</label>
@@ -33,16 +38,16 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.0.0-rc.5/dist/html2canvas.min.js"></script>
 -->
   <script>
-    var param = window.location.search;
-    var format = getParam('format');    // EXPECT: 'vector' or 'raster'
+    const param = window.location.search;
+    let format = getParam('format');    // EXPECT: 'vector' or 'raster'
     if (!format) format = 'vector';
-    var area = getParam('area');        // EXPECT: '13000'(=Tokyo)、'13228'(=Akiruno City)
+    let area = getParam('area');        // EXPECT: '13000'(=Tokyo)、'13228'(=Akiruno City)
     if (!area) area='13000';
 
     document.getElementById('gsi-' + format).checked = true;
 
     mapboxgl.accessToken = 'pk.eyJ1IjoiY2hvbmFuLW5vem9tdSIsImEiOiJja2k1bHJjbDg0ZXZ2MnFrem81NWlmaG90In0.v__tuK8SHq9Q2IGKM9ZFwQ';
-    var map = new mapboxgl.Map({
+    let map = new mapboxgl.Map({
       container: "map",
       hash: true,
       style: "./style/gsi-" + format + ".json",
@@ -52,6 +57,9 @@
     map.addControl(new mapboxgl.ScaleControl(), "bottom-left");
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
     map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken}), 'top-left');
+//    map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken,language: 'ja',placeholderOrigin:'出発地を選択してください',placeholderDestination:'目的地を選択してください'}), 'top-left');
+    var draw = new MapboxDraw({displayControlsDefault: false,controls: {polygon: true,trash: true}});
+    map.addControl(draw);
 
     // ポリゴン追加（geojson版）
     map.on('load', renderFeature);
@@ -75,20 +83,15 @@
     for (var i = 0; i < inputs.length; i++) {
       inputs[i].onclick = switchLayer;
     }
-    var elms = document.getElementsByClassName("mapboxgl-ctrl-top-left");
-    for (var i = 0;i< elms.length; i++) {
-      elms[i].style.top="40px";
-    }
     function switchLayer(layer) {
       map.setStyle("./style/" + layer.target.id + ".json");
     }
     function setPopup(e) {
       new mapboxgl.Popup()
         .setLngLat(e.lngLat)
-        .setHTML(e.features[0].properties['耕地の種類']+e.features[0].properties['2019ID'])
+        .setHTML("<p>耕地の種類：" + e.features[0].properties['耕地の種類'] + "</p><p>2019ID："+e.features[0].properties['2019ID'] + "</p><textarea name='ID'></textarea><input type='button' value='更新'></input>")
         .addTo(map);
     }
-
     // 画像ダウンロード
     function downloadCanvas() {
       let canvas = document.getElementById("canvas");
@@ -106,6 +109,10 @@
       link.click();
       link.target = "";
     }
+    var elms = document.getElementsByClassName("mapboxgl-ctrl-top-left");
+    for (var i = 0;i< elms.length; i++) {
+      elms[i].style.top="40px";
+    }
 
     /**
      * Get the URL parameter value
@@ -121,6 +128,23 @@
         if (!results) return null;
         if (!results[2]) return '';
         return decodeURIComponent(results[2].replace(/\+/g, " "));
+    }
+
+    map.on('draw.create', updateArea);
+    map.on('draw.delete', updateArea);
+    map.on('draw.update', updateArea);
+
+    function updateArea(e) {
+      var data = draw.getAll();
+      var answer = document.getElementById('drawed-area');
+      if (data.features.length > 0) {
+         answer.innerHTML =
+          '<p><strong>' + JSON.stringify(data.features) + '</strong></p>';
+      } else {
+        answer.innerHTML = '';
+        if (e.type !== 'draw.delete')
+          alert('Use the draw tools to draw a polygon!');
+      }
     }
   </script>
 </body>

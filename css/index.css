@@ -42,8 +42,14 @@ body { margin: 0; padding: 0; }
 #menu2 a.active:hover {
   background: #ff9b9d;
 }
-svg {
+
+.drawed-box {
+  height: 75px;
+  width: 150px;
   position: absolute;
-  width: 100%;
-  height: 100%;
+  bottom: 40px;
+  left: 10px;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 15px;
+  text-align: center;
 }
