@@ -56,6 +56,7 @@
     });
     map.addControl(new mapboxgl.ScaleControl(), "bottom-left");
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken}), 'top-left');
 //    map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken,language: 'ja',placeholderOrigin:'出発地を選択してください',placeholderDestination:'目的地を選択してください'}), 'top-left');
     var draw = new MapboxDraw({displayControlsDefault: false,controls: {polygon: true,trash: true}});
     map.addControl(draw);
