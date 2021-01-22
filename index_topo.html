@@ -76,11 +76,12 @@
     d3.json(topojsonUrl).then(function(topo) {
       // TopoJSONをGeoJSONに変換する
       geojson = topojson.feature(topo, topo.objects['tokyo']);
+
+      map.on('load', renderFeature);
+      // setStyle呼出時にもtrigger
+      map.on('style.load', renderFeature);
     });
 
-    map.on('load', renderFeature);
-    // setStyle呼出時にもtrigger
-    map.on('style.load', renderFeature);
     // ポリゴンレンダリング
     function renderFeature() {
       const sourceId = 'feature-' + area, layerId = sourceId + '-line';
