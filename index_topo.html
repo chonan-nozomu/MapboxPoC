@@ -6,19 +6,13 @@
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.0.1/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.0.1/mapbox-gl.css" rel="stylesheet" />
-  <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.3.1/d3.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
-  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.2.0/mapbox-gl-draw.js"></script>
-  <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.2.0/mapbox-gl-draw.css" type="text/css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.3.1/d3.min.js"></script>
   <link href="./css/index.css" rel="stylesheet" />
 </head>
-
 <body>
   <div id="map"></div>
-  <div class="drawed-box">
-    <div id="drawed-area"></div>
-  </div>
+  <div class="drawed-box"><div id="drawed-area"></div></div>
   <div id="menu1">
     <input id="gsi-vector" type="radio" name="rtoggle" value="vector" checked="checked" />
     <label for="gsi-vector">ベクタ(地理院標準)</label>
@@ -26,20 +20,16 @@
     <label for="gsi-raster">ラスタ(地理院淡色)</label>
   </div>
   <div id="menu2">
-    <a href="#" id="canvas1" class="active" onclick="downloadCanvas();">canvas出力(96dpi)</a>
-    <a href="#" id="api" class="active" onclick="downloadStaticImage();">Static Image API</a>
+    <a href="#" id="a0print" class="active" onclick="a0Print();">A0印刷</a>
   </div>
-  <canvas id="canvas"></canvas>
-  <a id="hiddenLink" style="display:none;">link</a>
   <!-- directions -->
   <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.js"></script>
   <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.css" type="text/css" />
-  <!-- jsPDF
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.2.0/jspdf.umd.min.js"></script>
- -->
-  <!-- html2canvas 
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.0.0-rc.5/dist/html2canvas.min.js"></script>
--->
+  <!-- draw -->
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.2.0/mapbox-gl-draw.js"></script>
+  <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.2.0/mapbox-gl-draw.css" type="text/css"/>
+  <!-- jsPDF -->
+  <script type="text/javascript" src="//cdn.jsdelivr.net/jspdf/1.3.4/jspdf.min.js"></script>
   <script>
     const param = window.location.search;
     let format = getParam('format');    // EXPECT: 'vector' or 'raster'
@@ -59,83 +49,154 @@
     });
     map.addControl(new mapboxgl.ScaleControl(), "bottom-left");
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-//    map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken,language: 'ja',placeholderOrigin:'出発地を選択してください',placeholderDestination:'目的地を選択してください'}), 'top-left');
+    map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken,language: 'ja',placeholderOrigin:'出発地を選択してください',placeholderDestination:'目的地を選択してください'}), 'top-left');
     var draw = new MapboxDraw({displayControlsDefault: false,controls: {polygon: true,trash: true}});
     map.addControl(draw);
+    map.on('draw.create', updateDrawArea);
+    map.on('draw.delete', updateDrawArea);
+    map.on('draw.update', updateDrawArea);
 
-    // ポリゴン追加（topojson＋d3.js版）
+    // Update Drawing Area
+    function updateDrawArea(e) {
+      const data = draw.getAll();
+      let answer = document.getElementById('drawed-area');
+      if (data.features.length > 0) {
+         answer.innerHTML = '<p><strong>' + JSON.stringify(data.features) + '</strong></p>';
+      } else {
+        answer.innerHTML = '';
+        if (e.type !== 'draw.delete') alert('Use the draw tools to draw a polygon!');
+      }
+    }
+
+    // GeoJSON読込
+    let geojson = null;
+
+    // TopoJSON＋d3.js版
     const topojsonUrl = "https://chonan-nozomu.github.io/MapboxPoC/topojson/" + area + ".topojson";
-    // svg要素をアペンドする
-    let container = map.getCanvasContainer();
-    let svg = d3.select(container).append("svg");
-    const project = d3.geoTransform({point: function(lng, lat) {
-      var point = map.project(new mapboxgl.LngLat(lng, lat));
-      this.stream.point(point.x, point.y);
-    }});
     d3.json(topojsonUrl).then(function(topo) {
       // TopoJSONをGeoJSONに変換する
-      const geojson = topojson.feature(topo, topo.objects['tokyo']);
-      map.on('load', renderFeature);
-      // setStyle呼出時にtrigger
-      map.on('style.load', renderFeature);
-      function renderFeature() {
-        var sourceId = 'feature-' + area, layerId = sourceId + '-line';
-        map.addSource(sourceId, {type: 'geojson', data: geojson});
-        map.addLayer({id: layerId,type: 'line',source: sourceId,paint:{'line-color':'#bb641d','line-width':1.5}});
-        map.on('click', layerId, setPopup);
-        // Change the cursor to a pointer when the mouse is over the places layer.
-        map.on('mouseenter', layerId, function() {
-          map.getCanvas().style.cursor = 'pointer';
-        });
-        // Change it back to a pointer when it leaves.
-        map.on('mouseleave', layerId, function() {
-          map.getCanvas().style.cursor = '';
-        });
-      }
-
-      
-      // ベクタ・ラスタ切替イベントにアップデート関数をバインド
-      const inputs = document.getElementById('menu1').getElementsByTagName('input');
-      function switchLayer(layer) {
-        map.setStyle("./style/" + layer.target.id + ".json");
-      }
-      for (var i = 0; i < inputs.length; i++) {
-        inputs[i].onclick = switchLayer;
-      }
+      geojson = topojson.feature(topo, topo.objects['tokyo']);
     });
-    var inputs = document.getElementById('menu1').getElementsByTagName('input');
+
+    map.on('load', renderFeature);
+    // setStyle呼出時にもtrigger
+    map.on('style.load', renderFeature);
+    // ポリゴンレンダリング
+    function renderFeature() {
+      const sourceId = 'feature-' + area, layerId = sourceId + '-line';
+      map.addSource(sourceId, {type: 'geojson', data: geojson});
+      map.addLayer({id: layerId,type: 'line',source: sourceId,paint:{'line-color':'#bb641d','line-width':1.5}});
+      map.on('click', layerId, setPopup);
+      // Change the cursor to a pointer when the mouse is over the places layer.
+      map.on('mouseenter', layerId, () =>{map.getCanvas().style.cursor = 'pointer';});
+      // Change it back to a pointer when it leaves.
+      map.on('mouseleave', layerId, ()=>{map.getCanvas().style.cursor = '';});
+    }
+
+    // ベクタ・ラスタ切替
+    const inputs = document.getElementById('menu1').getElementsByTagName('input');
     for (var i = 0; i < inputs.length; i++) {
       inputs[i].onclick = switchLayer;
     }
     function switchLayer(layer) {
       map.setStyle("./style/" + layer.target.id + ".json");
     }
+    let elms = document.getElementsByClassName("mapboxgl-ctrl-top-left");
+    for (var i = 0;i< elms.length; i++) {
+      elms[i].style.top="40px";
+    }
+
+    // ポップアップ
     function setPopup(e) {
       new mapboxgl.Popup()
         .setLngLat(e.lngLat)
-        .setHTML("<p>耕地の種類：" + e.features[0].properties['耕地の種類'] + "</p><p>2019ID："+e.features[0].properties['2019ID'] + "</p><textarea name='ID'></textarea><input type='button' value='更新'></input>")
+        .setHTML("<p>耕地の種類：" + e.features[0].properties['耕地の種類'] + "</p>" +
+                 "<p>2019ID："+e.features[0].properties['2019ID'] + "</p>" + 
+                 "<textarea name='ID'></textarea><input type='button' value='更新'></input>")
         .addTo(map);
     }
-    // 画像ダウンロード
-    function downloadCanvas() {
-      let canvas = document.getElementById("canvas");
-      let link = document.getElementById("hiddenLink");
-      link.href = map.getCanvas().toDataURL("image/png");
-      link.download = "canvas.png"
-      link.click();
-    }
-    // 静的HTMLダウンロード
-    function downloadStaticImage() {
-      let link = document.getElementById("hiddenLink");
-      link.href = "https://api.mapbox.com/styles/v1/chonan-nozomu/ckj0qqpqe0uie1arqbobct40r/static/pin-l-z+0000ff(139.75175,35.68551)/139.75175,35.68551,10,0/500x400@2x?access_token=" + mapboxgl.accessToken;
-      link.download = "image.png";
-      link.target = "_blank";
-      link.click();
-      link.target = "";
-    }
-    var elms = document.getElementsByClassName("mapboxgl-ctrl-top-left");
-    for (var i = 0;i< elms.length; i++) {
-      elms[i].style.top="40px";
+
+    // A0印刷
+    function a0Print() {
+      'use strict';
+
+      // Generate Button disabled
+      document.getElementById('a0print').classList.add('disabled');
+
+      // A0 = 841 mm × 1189 mm
+      const format = 'pdf',
+            unit = 'mm',
+            width = 1189,
+            height = 841;
+
+      // TODO: create interface
+      const dpi = 300,
+            zoom = map.getZoom(),
+            center = map.getCenter(),
+            style = 'mapbox://styles/chonan-nozomu/ckj0qqpqe0uie1arqbobct40r',
+            bearing = map.getBearing(),
+            pitch = map.getPitch(),
+            zoomLebel = 10;
+
+      // Calculate pixel ratio
+      const actualPixelRatio = window.devicePixelRatio;
+      Object.defineProperty(window, 'devicePixelRatio', {
+        get: ()=> dpi / 96
+      });
+
+      // Create map container
+      let hidden = document.createElement('div');
+      hidden.className = 'hidden-map';
+      document.body.appendChild(hidden);
+      let container = document.createElement('div');
+      container.style.width = (96/25.4)* width + 'px';
+      container.style.height = (96/25.4)* height + 'px';
+      hidden.appendChild(container);
+
+      // Render map
+      let renderMap = new mapboxgl.Map({
+        container: container,
+        center: center,
+        zoom: zoom,
+        style: style,
+        bearing: bearing,
+        pitch: pitch,
+        interactive: false,
+        attributionControl: false
+      });
+
+      renderMap.once('load', function() {
+        // Add GeoJSON Polygon TODO
+        const sourceId = 'a0print-feature-' + area, layerId = sourceId + '-line';
+        renderMap.addSource(sourceId, {type: 'geojson', data: geojson});
+        renderMap.addLayer({id: layerId,type: 'line',source: sourceId,paint:{'line-color':'#bb641d','line-width':1.5}});
+
+        let pdf = new jsPDF({
+          orientation: width > height ? 'l' : 'p',
+          unit: unit,
+          format: [width, height],
+          compress: true
+        });
+
+        pdf.addImage(renderMap.getCanvas().toDataURL('image/png'), 'png', 0, 0, width, height, null, 'FAST');
+
+        pdf.setProperties({
+          title: map.getStyle().name,
+          subject: "center: [" + map.getCenter().lng  + ", " + map.getCenter().lat + "," + zoomLebel + "]",
+          creator: 'Print Maps',
+          author: '(c) Mapbox'
+        })
+
+        pdf.save('map.pdf');
+
+        renderMap.remove();
+        hidden.parentNode.removeChild(hidden);
+        Object.defineProperty(window, 'devicePixelRatio', {
+          get: ()=>actualPixelRatio
+        });
+        // Generate Button enabled
+        document.getElementById('a0print').classList.remove('disabled');
+      });
     }
 
     /**
@@ -147,30 +208,12 @@
     function getParam(name, url) {
         if (!url) url = window.location.href;
         name = name.replace(/[\[\]]/g, "\\$&");
-        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+        const regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
             results = regex.exec(url);
         if (!results) return null;
         if (!results[2]) return '';
         return decodeURIComponent(results[2].replace(/\+/g, " "));
     }
-
-    map.on('draw.create', updateArea);
-    map.on('draw.delete', updateArea);
-    map.on('draw.update', updateArea);
-
-    function updateArea(e) {
-      var data = draw.getAll();
-      var answer = document.getElementById('drawed-area');
-      if (data.features.length > 0) {
-         answer.innerHTML =
-          '<p><strong>' + JSON.stringify(data.features) + '</strong></p>';
-      } else {
-        answer.innerHTML = '';
-        if (e.type !== 'draw.delete')
-          alert('Use the draw tools to draw a polygon!');
-      }
-    }
   </script>
 </body>
-
 </html>
