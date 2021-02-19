@@ -19,17 +19,6 @@
     <input id="gsi-raster" type="radio" name="rtoggle" value="raster" />
     <label for="gsi-raster">ラスタ(地理院淡色)</label>
   </div>
-  <div id="menu2">
-    <a href="#" id="a0print" class="active" onclick="a0Print();">A0印刷</a>
-  </div>
-  <!-- directions -->
-  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.js"></script>
-  <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.css" type="text/css" />
-  <!-- draw -->
-  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.2.0/mapbox-gl-draw.js"></script>
-  <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.2.0/mapbox-gl-draw.css" type="text/css"/>
-  <!-- jsPDF -->
-  <script type="text/javascript" src="//cdn.jsdelivr.net/jspdf/1.3.4/jspdf.min.js"></script>
   <script>
     const param = window.location.search;
     let format = getParam('format');    // EXPECT: 'vector' or 'raster'
@@ -50,24 +39,6 @@
     });
     map.addControl(new mapboxgl.ScaleControl(), "bottom-left");
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    map.addControl(new MapboxDirections({accessToken: mapboxgl.accessToken,language: 'ja',unit:'metric',placeholderOrigin:'出発地を選択してください',placeholderDestination:'目的地を選択してください'}), 'top-left');
-    var draw = new MapboxDraw({displayControlsDefault: false,controls: {polygon: true,trash: true}});
-    map.addControl(draw);
-    map.on('draw.create', updateDrawArea);
-    map.on('draw.delete', updateDrawArea);
-    map.on('draw.update', updateDrawArea);
-
-    // Update Drawing Area
-    function updateDrawArea(e) {
-      const data = draw.getAll();
-      let answer = document.getElementById('drawed-area');
-      if (data.features.length > 0) {
-         answer.innerHTML = '<p><strong>' + JSON.stringify(data.features) + '</strong></p>';
-      } else {
-        answer.innerHTML = '';
-        if (e.type !== 'draw.delete') alert('Use the draw tools to draw a polygon!');
-      }
-    }
 
     // GeoJSON読込
     let geojson = null;
@@ -116,89 +87,6 @@
                  "<p>2019ID："+e.features[0].properties['2019ID'] + "</p>" + 
                  "<textarea name='ID'></textarea><input type='button' value='更新'></input>")
         .addTo(map);
-    }
-
-    // A0印刷
-    function a0Print() {
-      'use strict';
-
-      // Generate Button disabled
-      document.getElementById('a0print').classList.add('disabled');
-
-      // A0 = 841 mm × 1189 mm
-      const format = 'pdf',
-            unit = 'mm',
-            width = 1189,
-            height = 841;
-
-      // TODO: create interface
-      const dpi = 300,
-            zoom = map.getZoom(),
-            center = map.getCenter(),
-            style = 'mapbox://styles/chonan-nozomu/ckj0qqpqe0uie1arqbobct40r',
-            bearing = map.getBearing(),
-            pitch = map.getPitch(),
-            zoomLebel = 10;
-
-      // Calculate pixel ratio
-      const actualPixelRatio = window.devicePixelRatio;
-      Object.defineProperty(window, 'devicePixelRatio', {
-        get: ()=> dpi / 96
-      });
-
-      // Create map container
-      let hidden = document.createElement('div');
-      hidden.className = 'hidden-map';
-      document.body.appendChild(hidden);
-      let container = document.createElement('div');
-      container.style.width = (96/25.4)* width + 'px';
-      container.style.height = (96/25.4)* height + 'px';
-      hidden.appendChild(container);
-
-      // Render map
-      let renderMap = new mapboxgl.Map({
-        container: container,
-        center: center,
-        zoom: zoom,
-        style: style,
-        bearing: bearing,
-        pitch: pitch,
-        interactive: false,
-        attributionControl: false
-      });
-
-      renderMap.once('load', function() {
-        // Add GeoJSON Polygon TODO
-        const sourceId = 'a0print-feature-' + area, layerId = sourceId + '-line';
-        renderMap.addSource(sourceId, {type: 'geojson', data: geojson});
-        renderMap.addLayer({id: layerId,type: 'line',source: sourceId,paint:{'line-color':'#bb641d','line-width':1.5}});
-
-        let pdf = new jsPDF({
-          orientation: width > height ? 'l' : 'p',
-          unit: unit,
-          format: [width, height],
-          compress: true
-        });
-
-        pdf.addImage(renderMap.getCanvas().toDataURL('image/png'), 'png', 0, 0, width, height, null, 'FAST');
-
-        pdf.setProperties({
-          title: map.getStyle().name,
-          subject: "center: [" + map.getCenter().lng  + ", " + map.getCenter().lat + "," + zoomLebel + "]",
-          creator: 'Print Maps',
-          author: '(c) Mapbox'
-        })
-
-        pdf.save('map.pdf');
-
-        renderMap.remove();
-        hidden.parentNode.removeChild(hidden);
-        Object.defineProperty(window, 'devicePixelRatio', {
-          get: ()=>actualPixelRatio
-        });
-        // Generate Button enabled
-        document.getElementById('a0print').classList.remove('disabled');
-      });
     }
 
     /**
